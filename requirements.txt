@@ -1,0 +1,8 @@
+# GUI Support Tools for VLM - Python Dependencies
+# Requires Python 3.8+
+
+# Image processing
+Pillow>=10.0.0
+
+# Mouse control
+pyautogui>=0.9.54
