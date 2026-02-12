@@ -18,6 +18,7 @@ from PIL import Image
 
 from grid_common import (
     load_config,
+    save_config,
     get_config_path,
     capture_screenshot_region,
     process_image,
@@ -121,17 +122,33 @@ def process_screenshot_region(
         try:
             # 计算网格大小：根据放大后的尺寸计算，确保网格数量合理（约8-12条线）
             # coord_step 是原始坐标系的网格步长，用于坐标标注
+            processed_width = int(orig_width * scale_factor)
+            processed_height = int(orig_height * scale_factor)
+            processed_short_edge = min(processed_width, processed_height)
+
             if grid_size is None:
-                processed_short_edge = min(
-                    int(orig_width * scale_factor), int(orig_height * scale_factor)
-                )
                 # 目标：短边显示约8-10条网格线
                 grid_size = max(processed_short_edge // 8, 40)
-                # 坐标标注使用原始网格步长（根据原始区域大小计算）
-                coord_step = max(orig_width // 8, 10)
-            else:
-                # 如果用户指定了grid_size，coord_step按比例缩放
-                coord_step = int(grid_size / scale_factor)
+
+            # 计算网格线数量（基于处理后的尺寸）
+            h_lines = processed_height // grid_size + 1
+            v_lines = processed_width // grid_size + 1
+
+            # 坐标标注步长：确保最后一个坐标正好落在区域边界
+            # 使用原始尺寸除以网格线间隔数，确保坐标范围与原始区域匹配
+            coord_step_y = (
+                max(round(orig_height / (h_lines - 1)), 10)
+                if h_lines > 1
+                else orig_height
+            )
+            coord_step_x = (
+                max(round(orig_width / (v_lines - 1)), 10)
+                if v_lines > 1
+                else orig_width
+            )
+
+            # 使用较小的步长作为统一的坐标步长（保持正方形网格的视觉一致性）
+            coord_step = min(coord_step_x, coord_step_y)
 
             # 处理图片，传入偏移量以显示绝对坐标，以及coord_step用于正确的坐标标注
             # 传入原始尺寸作为右下角标注的尺寸
