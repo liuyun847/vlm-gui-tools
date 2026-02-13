@@ -2,6 +2,9 @@
 
 一套专为视觉语言模型（VLM）设计的屏幕截图网格标注和鼠标点击工具，帮助 AI Agent 通过视觉方式精确操作图形界面。
 
+演示:
+https://www.bilibili.com/video/BV1ubc7znExR/?share_source=copy_web&vd_source=f46869c3dc96d404e80f08c0062bd4e1
+
 ## 功能特性
 
 - **全屏截图标注** - 捕获整个屏幕并添加网格和坐标标注
@@ -185,3 +188,4 @@ requirements.txt       # Python 依赖
 ## 许可证
 
 MIT License
+
