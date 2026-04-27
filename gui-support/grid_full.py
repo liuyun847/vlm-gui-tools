@@ -13,6 +13,7 @@ from typing import Optional
 
 from grid_common import (
     load_config,
+    save_config,
     get_config_path,
     capture_screenshot,
     process_image,
@@ -83,7 +84,24 @@ def main():
         help="边缘扩展宽度（像素），默认根据图片尺寸自适应",
     )
 
+    parser.add_argument(
+        "--set-default-output",
+        type=str,
+        metavar="PATH",
+        default=None,
+        help="设置默认输出路径并退出",
+    )
+
     args = parser.parse_args()
+
+    # 处理设置默认输出路径
+    if args.set_default_output is not None:
+        output_dir = Path(args.set_default_output).resolve()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        config["default_output_path"] = str(output_dir)
+        save_config(config)
+        print(f"默认输出路径已更新为: {output_dir}")
+        sys.exit(0)
 
     # 确定输出路径（支持自动时间戳命名）
     output_path = resolve_output_path(default_output, is_region=False)
@@ -100,7 +118,7 @@ def main():
             f"  输出尺寸: {metadata['output_size']['width']} x {metadata['output_size']['height']}"
         )
 
-    except Exception as e:
+    except (ValueError, RuntimeError, OSError) as e:
         print(f"错误: {e}", file=sys.stderr)
         sys.exit(1)
 

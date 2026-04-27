@@ -10,7 +10,6 @@
 import argparse
 import sys
 import tempfile
-from ctypes import windll
 from pathlib import Path
 from typing import Tuple, Optional
 
@@ -20,33 +19,12 @@ from grid_common import (
     load_config,
     save_config,
     get_config_path,
+    get_screen_size,
+    parse_coordinate,
     capture_screenshot_region,
     process_image,
     resolve_output_path,
 )
-
-
-def get_screen_size() -> Tuple[int, int]:
-    """获取屏幕尺寸。
-
-    Returns:
-        (width, height) 屏幕宽度和高度
-    """
-    # 设置DPI感知
-    windll.user32.SetProcessDPIAware()
-
-    # 获取屏幕尺寸（物理分辨率）
-    hdc = windll.user32.GetDC(0)
-    width = windll.gdi32.GetDeviceCaps(hdc, 118)  # DESKTOPHORZRES
-    height = windll.gdi32.GetDeviceCaps(hdc, 117)  # DESKTOPVERTRES
-    windll.user32.ReleaseDC(0, hdc)
-
-    if width <= 0 or height <= 0:
-        # 备用方案：使用GetSystemMetrics
-        width = windll.user32.GetSystemMetrics(0)  # SM_CXSCREEN
-        height = windll.user32.GetSystemMetrics(1)  # SM_CYSCREEN
-
-    return width, height
 
 
 def process_screenshot_region(
@@ -121,7 +99,6 @@ def process_screenshot_region(
 
         try:
             # 计算网格大小：根据放大后的尺寸计算，确保网格数量合理（约8-12条线）
-            # coord_step 是原始坐标系的网格步长，用于坐标标注
             processed_width = int(orig_width * scale_factor)
             processed_height = int(orig_height * scale_factor)
             processed_short_edge = min(processed_width, processed_height)
@@ -130,27 +107,7 @@ def process_screenshot_region(
                 # 目标：短边显示约8-10条网格线
                 grid_size = max(processed_short_edge // 8, 40)
 
-            # 计算网格线数量（基于处理后的尺寸）
-            h_lines = processed_height // grid_size + 1
-            v_lines = processed_width // grid_size + 1
-
-            # 坐标标注步长：确保最后一个坐标正好落在区域边界
-            # 使用原始尺寸除以网格线间隔数，确保坐标范围与原始区域匹配
-            coord_step_y = (
-                max(round(orig_height / (h_lines - 1)), 10)
-                if h_lines > 1
-                else orig_height
-            )
-            coord_step_x = (
-                max(round(orig_width / (v_lines - 1)), 10)
-                if v_lines > 1
-                else orig_width
-            )
-
-            # 使用较小的步长作为统一的坐标步长（保持正方形网格的视觉一致性）
-            coord_step = min(coord_step_x, coord_step_y)
-
-            # 处理图片，传入偏移量以显示绝对坐标，以及coord_step用于正确的坐标标注
+            # 处理图片，传入偏移量和缩放因子以显示正确的绝对坐标
             # 传入原始尺寸作为右下角标注的尺寸
             metadata = process_image(
                 process_path,
@@ -158,7 +115,7 @@ def process_screenshot_region(
                 grid_size,
                 margin,
                 offset=(x1, y1),
-                coord_step=coord_step,
+                scale_factor=scale_factor,
                 display_size=(orig_width, orig_height),
             )
 
@@ -222,14 +179,28 @@ def main():
         help="边缘扩展宽度（像素），默认根据图片尺寸自适应",
     )
 
+    parser.add_argument(
+        "--set-default-output",
+        type=str,
+        metavar="PATH",
+        default=None,
+        help="设置默认输出路径并退出",
+    )
+
     args = parser.parse_args()
+
+    # 处理设置默认输出路径
+    if args.set_default_output is not None:
+        output_dir = Path(args.set_default_output).resolve()
+        output_dir.mkdir(parents=True, exist_ok=True)
+        config["default_output_path"] = str(output_dir)
+        save_config(config)
+        print(f"默认输出路径已更新为: {output_dir}")
+        sys.exit(0)
 
     # 解析中心点坐标
     try:
-        coords = [int(x.strip()) for x in args.center.split(",")]
-        if len(coords) != 2:
-            raise ValueError("中心点坐标需要2个数值: cx,cy")
-        center = tuple(coords)
+        center = parse_coordinate(args.center)
     except ValueError as e:
         print(f"错误: 无效的中心点坐标格式 '{args.center}': {e}", file=sys.stderr)
         sys.exit(1)
@@ -248,7 +219,7 @@ def main():
             f"  区域: ({metadata['region']['x1']}, {metadata['region']['y1']}, {metadata['region']['x2']}, {metadata['region']['y2']})"
         )
 
-    except Exception as e:
+    except (ValueError, RuntimeError, OSError) as e:
         print(f"错误: {e}", file=sys.stderr)
         sys.exit(1)
 

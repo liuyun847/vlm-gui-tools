@@ -11,6 +11,8 @@ import sys
 from pathlib import Path
 from typing import Tuple, Optional
 
+from grid_common import parse_coordinate
+
 try:
     import pyautogui
 except ImportError:
@@ -49,7 +51,7 @@ def click_at(
     screen_width, screen_height = pyautogui.size()
 
     # 验证坐标范围
-    if not (0 <= x <= screen_width and 0 <= y <= screen_height):
+    if not (0 <= x < screen_width and 0 <= y < screen_height):
         raise ValueError(
             f"坐标 ({x}, {y}) 超出屏幕范围 ({screen_width}, {screen_height})"
         )
@@ -59,38 +61,6 @@ def click_at(
 
     # 执行点击
     pyautogui.click(x=x, y=y, clicks=clicks, interval=interval, button=button)
-
-
-def parse_coordinate(coord_str: str) -> Tuple[int, int]:
-    """解析坐标字符串。
-
-    支持的格式：
-    - "100,200" -> (100, 200)
-    - "100 200" -> (100, 200)
-    - "(100, 200)" -> (100, 200)
-
-    Args:
-        coord_str: 坐标字符串
-
-    Returns:
-        (x, y) 坐标元组
-
-    Raises:
-        ValueError: 格式无效时抛出
-    """
-    # 移除括号和多余空格
-    cleaned = coord_str.strip().replace("(", "").replace(")", "").replace(",", " ")
-    parts = cleaned.split()
-
-    if len(parts) != 2:
-        raise ValueError(f"坐标格式无效: '{coord_str}'，期望格式: 'x,y' 或 'x y'")
-
-    try:
-        x = int(parts[0])
-        y = int(parts[1])
-        return x, y
-    except ValueError as e:
-        raise ValueError(f"坐标必须是整数: '{coord_str}'") from e
 
 
 def get_current_mouse_position() -> Tuple[int, int]:
