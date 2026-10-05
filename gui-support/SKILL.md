@@ -152,7 +152,7 @@ python click_tool.py --position
 
 ```json
 {
-  "default_output_path": "C:\\Users\\MLTZ\\Desktop\\程序\\temp_ai"
+  "default_output_path": "C:\\path\\to\\output\\folder"
 }
 ```
 
